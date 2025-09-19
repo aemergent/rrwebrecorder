@@ -43,7 +43,7 @@
                     }
                 }).join(' ');
 
-                window.rrweb.record.addCustomEvent("console", {
+                window.rrweb.addCustomEvent("console", {
                     level: level,
                     message: message,
                     args: args.map(arg => {
@@ -66,7 +66,7 @@
     // Capture uncaught errors
     window.addEventListener('error', (event) => {
         try {
-            window.rrweb.record.addCustomEvent("console", {
+            window.rrweb.addCustomEvent("console", {
                 level: 'error',
                 message: `Uncaught Error: ${event.message}`,
                 args: [event.error?.stack || event.message],
@@ -84,7 +84,7 @@
     // Capture unhandled promise rejections
     window.addEventListener('unhandledrejection', (event) => {
         try {
-            window.rrweb.record.addCustomEvent("console", {
+            window.rrweb.addCustomEvent("console", {
                 level: 'error',
                 message: `Unhandled Promise Rejection: ${event.reason}`,
                 args: [String(event.reason)],
@@ -139,7 +139,7 @@
             requestBody = serializeData(init.body);
         }
 
-        window.rrweb.record.addCustomEvent("network", {
+        window.rrweb.addCustomEvent("network", {
             id,
             phase: "start",
             api: "fetch",
@@ -179,7 +179,7 @@
                 responseText = `[Error reading response: ${err.message}]`;
             }
 
-            window.rrweb.record.addCustomEvent("network", {
+            window.rrweb.addCustomEvent("network", {
                 id,
                 phase: "end",
                 status: res.status,
@@ -193,7 +193,7 @@
             });
             return res;
         } catch (err) {
-            window.rrweb.record.addCustomEvent("network", {
+            window.rrweb.addCustomEvent("network", {
                 id,
                 phase: "error",
                 error: err.message,
@@ -234,7 +234,7 @@
             started = Date.now();
             requestBody = serializeData(body);
 
-            window.rrweb.record.addCustomEvent("network", {
+            window.rrweb.addCustomEvent("network", {
                 id,
                 phase: "start",
                 api: "xhr",
@@ -274,7 +274,7 @@
                     responseBody = `[Error reading response: ${e.message}]`;
                 }
 
-                window.rrweb.record.addCustomEvent("network", {
+                window.rrweb.addCustomEvent("network", {
                     id,
                     phase: "end",
                     status: xhr.status,
@@ -289,7 +289,7 @@
             };
 
             const handleError = () => {
-                window.rrweb.record.addCustomEvent("network", {
+                window.rrweb.addCustomEvent("network", {
                     id,
                     phase: "error",
                     error: "Network error",
@@ -314,7 +314,7 @@
     const push = history.pushState,
         replace = history.replaceState;
     const emitNav = () =>
-        window.rrweb.record.addCustomEvent("nav", {
+        window.rrweb.addCustomEvent("nav", {
             href: location.href,
             t: Date.now(),
         });
@@ -362,31 +362,48 @@
 
     // Optional "test mode" switch - persists across redirections in same tab
     if (sessionStorage.getItem("rrweb_testmode") === "true") {
-        const hud = document.createElement("div");
-        hud.style.cssText =
-            "position:fixed;right:12px;bottom:12px;background:#111;color:#fff;padding:8px 10px;border-radius:8px;z-index:999999;font-family:monospace;font-size:12px;";
-        hud.innerHTML =
-            '🧪 Recording <button id="dl">Download</button> <button id="net">Network</button> <button id="off">Stop</button> <button id="clear">Exit Test Mode</button>';
-        document.body.appendChild(hud);
-        hud.querySelector("#dl").onclick = () => window.__rr.download();
-        hud.querySelector("#net").onclick = () => {
-            console.table(window.__rr.getNetworkEvents());
-        };
-        hud.querySelector("#off").onclick = () => {
-            window.__rr.stop();
-            window.opener?.postMessage(
-                {
-                    type: "rrweb_events",
-                    data: JSON.stringify(session),
-                },
-                "*",
-            );
-            hud.remove();
-        };
-        hud.querySelector("#clear").onclick = () => {
-            sessionStorage.removeItem("rrweb_testmode");
-            hud.remove();
-            console.log("🧪 Test mode disabled");
-        };
+        // Wait for DOM to be ready before creating test mode UI
+        function createTestModeUI() {
+            if (!document.body) {
+                setTimeout(createTestModeUI, 100);
+                return;
+            }
+
+            const hud = document.createElement("div");
+            hud.style.cssText =
+                "position:fixed;right:12px;bottom:12px;background:#111;color:#fff;padding:8px 10px;border-radius:8px;z-index:999999;font-family:monospace;font-size:12px;";
+            hud.innerHTML =
+                '🧪 Recording <button id="dl">Download</button> <button id="net">Network</button> <button id="off">Stop</button> <button id="clear">Exit Test Mode</button>';
+
+            document.body.appendChild(hud);
+
+            hud.querySelector("#dl").onclick = () => window.__rr.download();
+            hud.querySelector("#net").onclick = () => {
+                console.table(window.__rr.getNetworkEvents());
+            };
+            hud.querySelector("#off").onclick = () => {
+                window.__rr.stop();
+                window.opener?.postMessage(
+                    {
+                        type: "rrweb_events",
+                        data: JSON.stringify(session),
+                    },
+                    "*",
+                );
+                hud.remove();
+            };
+            hud.querySelector("#clear").onclick = () => {
+                sessionStorage.removeItem("rrweb_testmode");
+                hud.remove();
+                console.log("🧪 Test mode disabled");
+            };
+        }
+
+        // Initialize test mode UI when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', createTestModeUI);
+        } else {
+            createTestModeUI();
+        }
     }
 })();
