@@ -9,7 +9,22 @@
     }
 
     const session = [];
-    const stop = window.rrweb.record({
+    let stopRecording = null;
+
+    // Custom event emitter function
+    function addCustomEvent(tag, payload) {
+        session.push({
+            type: 5, // Custom event type
+            data: {
+                tag: tag,
+                payload: payload
+            },
+            timestamp: Date.now()
+        });
+    }
+
+    // Start recording and get the stopFn
+    stopRecording = window.rrweb.record({
         emit(e) {
             session.push(e);
         },
@@ -43,7 +58,7 @@
                     }
                 }).join(' ');
 
-                window.rrweb.addCustomEvent("console", {
+                addCustomEvent("console", {
                     level: level,
                     message: message,
                     args: args.map(arg => {
@@ -66,7 +81,7 @@
     // Capture uncaught errors
     window.addEventListener('error', (event) => {
         try {
-            window.rrweb.addCustomEvent("console", {
+            addCustomEvent("console", {
                 level: 'error',
                 message: `Uncaught Error: ${event.message}`,
                 args: [event.error?.stack || event.message],
@@ -84,7 +99,7 @@
     // Capture unhandled promise rejections
     window.addEventListener('unhandledrejection', (event) => {
         try {
-            window.rrweb.addCustomEvent("console", {
+            addCustomEvent("console", {
                 level: 'error',
                 message: `Unhandled Promise Rejection: ${event.reason}`,
                 args: [String(event.reason)],
@@ -139,7 +154,7 @@
             requestBody = serializeData(init.body);
         }
 
-        window.rrweb.addCustomEvent("network", {
+        addCustomEvent("network", {
             id,
             phase: "start",
             api: "fetch",
@@ -179,7 +194,7 @@
                 responseText = `[Error reading response: ${err.message}]`;
             }
 
-            window.rrweb.addCustomEvent("network", {
+            addCustomEvent("network", {
                 id,
                 phase: "end",
                 status: res.status,
@@ -193,7 +208,7 @@
             });
             return res;
         } catch (err) {
-            window.rrweb.addCustomEvent("network", {
+            addCustomEvent("network", {
                 id,
                 phase: "error",
                 error: err.message,
@@ -234,7 +249,7 @@
             started = Date.now();
             requestBody = serializeData(body);
 
-            window.rrweb.addCustomEvent("network", {
+            addCustomEvent("network", {
                 id,
                 phase: "start",
                 api: "xhr",
@@ -274,7 +289,7 @@
                     responseBody = `[Error reading response: ${e.message}]`;
                 }
 
-                window.rrweb.addCustomEvent("network", {
+                addCustomEvent("network", {
                     id,
                     phase: "end",
                     status: xhr.status,
@@ -289,7 +304,7 @@
             };
 
             const handleError = () => {
-                window.rrweb.addCustomEvent("network", {
+                addCustomEvent("network", {
                     id,
                     phase: "error",
                     error: "Network error",
@@ -314,7 +329,7 @@
     const push = history.pushState,
         replace = history.replaceState;
     const emitNav = () =>
-        window.rrweb.addCustomEvent("nav", {
+        addCustomEvent("nav", {
             href: location.href,
             t: Date.now(),
         });
@@ -333,7 +348,7 @@
 
     // Expose controls
     window.__rr = {
-        stop: () => stop(),
+        stop: () => stopRecording(),
         dump: () => session.slice(),
         download: () => {
             const blob = new Blob([JSON.stringify(session, null, 2)], {
