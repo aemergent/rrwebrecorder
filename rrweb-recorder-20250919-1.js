@@ -377,6 +377,8 @@
 
     // Replace the existing test mode UI section in your base script with this:
 
+// Replace the existing test mode UI section in your base script with this:
+
 // Optional "test mode" switch - persists across redirections in same tab
 if (sessionStorage.getItem("rrweb_testmode") === "true") {
     // Wait for DOM to be ready before creating test mode UI
@@ -416,28 +418,10 @@ if (sessionStorage.getItem("rrweb_testmode") === "true") {
             <div style="width:1px;height:12px;background:#FFF;opacity:0.3"></div>
             <span></span>
             <div style="width:1px;height:12px;background:#FFF;opacity:0.3"></div>
-            <div style="cursor:pointer" id="dl-btn">
-                <svg width="37" height="36" viewBox="0 0 37 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="0.5" width="36" height="36" rx="12" fill="#4A90E2"/>
-                    <path d="M18.5 12v8M18.5 20l-3-3M18.5 20l3-3M12.5 22h12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </div>
-            <div style="cursor:pointer" id="net-btn">
-                <svg width="37" height="36" viewBox="0 0 37 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="0.5" width="36" height="36" rx="12" fill="#9B59B6"/>
-                    <path d="M12.5 14h12M12.5 18h12M12.5 22h8" stroke="white" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-            </div>
             <div style="cursor:pointer" id="stop-btn">
                 <svg width="37" height="36" viewBox="0 0 37 36" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <rect x="0.5" width="36" height="36" rx="12" fill="#FF6A4D"/>
                     <path d="M10.166 17.9993C10.166 14.071 10.166 12.1068 11.386 10.886C12.6077 9.66602 14.571 9.66602 18.4993 9.66602C22.4277 9.66602 24.3918 9.66602 25.6118 10.886C26.8327 12.1077 26.8327 14.071 26.8327 17.9993C26.8327 21.9277 26.8327 23.8918 25.6118 25.1118C24.3927 26.3327 22.4277 26.3327 18.4993 26.3327C14.571 26.3327 12.6068 26.3327 11.386 25.1118C10.166 23.8927 10.166 21.9277 10.166 17.9993Z" fill="white"/>
-                </svg>
-            </div>
-            <div style="cursor:pointer" id="clear-btn">
-                <svg width="37" height="36" viewBox="0 0 37 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="0.5" width="36" height="36" rx="12" fill="#7F8C8D"/>
-                    <path d="M14.5 14.5l8 8M22.5 14.5l-8 8" stroke="white" stroke-width="2" stroke-linecap="round"/>
                 </svg>
             </div>
         `;
@@ -448,10 +432,11 @@ if (sessionStorage.getItem("rrweb_testmode") === "true") {
         document.body.appendChild(hud);
 
         // Event handlers
-        hud.querySelector("#dl-btn").onclick = () => window.__rr.download();
-        hud.querySelector("#net-btn").onclick = () => {
+        //hud.querySelector("#dl-btn").onclick = () => window.__rr.download();
+        /* hud.querySelector("#net-btn").onclick = () => {
             console.table(window.__rr.getNetworkEvents());
         };
+        */
         hud.querySelector("#stop-btn").onclick = () => {
             clearInterval(timerInterval);
             window.__rr.stop();
@@ -464,12 +449,12 @@ if (sessionStorage.getItem("rrweb_testmode") === "true") {
             );
             hud.remove();
         };
-        hud.querySelector("#clear-btn").onclick = () => {
+        /*hud.querySelector("#clear-btn").onclick = () => {
             clearInterval(timerInterval);
             sessionStorage.removeItem("rrweb_testmode");
             hud.remove();
             console.log("🧪 Test mode disabled");
-        };
+        };*/
     }
 
     // Initialize test mode UI when DOM is ready
