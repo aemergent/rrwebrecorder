@@ -375,50 +375,108 @@
         sessionStorage.setItem("rrweb_testmode", "true");
     }
 
-    // Optional "test mode" switch - persists across redirections in same tab
-    if (sessionStorage.getItem("rrweb_testmode") === "true") {
-        // Wait for DOM to be ready before creating test mode UI
-        function createTestModeUI() {
-            if (!document.body) {
-                setTimeout(createTestModeUI, 100);
-                return;
-            }
+    // Replace the existing test mode UI section in your base script with this:
 
-            const hud = document.createElement("div");
-            hud.style.cssText =
-                "position:fixed;right:12px;bottom:12px;background:#111;color:#fff;padding:8px 10px;border-radius:8px;z-index:999999;font-family:monospace;font-size:12px;";
-            hud.innerHTML =
-                '🧪 Recording <button id="dl">Download</button> <button id="net">Network</button> <button id="off">Stop</button> <button id="clear">Exit Test Mode</button>';
-
-            document.body.appendChild(hud);
-
-            hud.querySelector("#dl").onclick = () => window.__rr.download();
-            hud.querySelector("#net").onclick = () => {
-                console.table(window.__rr.getNetworkEvents());
-            };
-            hud.querySelector("#off").onclick = () => {
-                window.__rr.stop();
-                window.opener?.postMessage(
-                    {
-                        type: "rrweb_events",
-                        data: JSON.stringify(session),
-                    },
-                    "*",
-                );
-                hud.remove();
-            };
-            hud.querySelector("#clear").onclick = () => {
-                sessionStorage.removeItem("rrweb_testmode");
-                hud.remove();
-                console.log("🧪 Test mode disabled");
-            };
+// Optional "test mode" switch - persists across redirections in same tab
+if (sessionStorage.getItem("rrweb_testmode") === "true") {
+    // Wait for DOM to be ready before creating test mode UI
+    function createTestModeUI() {
+        if (!document.body) {
+            setTimeout(createTestModeUI, 100);
+            return;
         }
 
-        // Initialize test mode UI when DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', createTestModeUI);
-        } else {
-            createTestModeUI();
-        }
+        const hud = document.createElement("div");
+        hud.style.cssText =
+            "position:fixed;left:50%;bottom:12px;transform:translateX(-50%);background:#111;color:#fff;padding:8px 16px;border-radius:8px;z-index:999999;display:flex;align-items:center;justify-content:space-between;min-width:200px";
+        
+        const startTime = Date.now();
+        const timeDisplay = document.createElement("span");
+        timeDisplay.style.cssText = "color:#FFF;font-family:Brockmann;font-size:16px;font-style:normal;font-weight:600;line-height:20px;letter-spacing:-0.32px;opacity:0.3";
+        
+        // Update timer every second
+        const updateTimer = () => {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
+            const secs = (elapsed % 60).toString().padStart(2, '0');
+            timeDisplay.textContent = `${mins}:${secs}`;
+        };
+        updateTimer();
+        const timerInterval = setInterval(updateTimer, 1000);
+        
+        hud.innerHTML = `
+            <div style="cursor:pointer" id="record-indicator">
+                <svg width="37" height="36" viewBox="0 0 37 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="0.5" width="36" height="36" rx="18" fill="#2EE572" fill-opacity="0.1"/>
+                    <circle opacity="0.2" cx="18.5004" cy="18.0004" r="9.6" fill="#2EE572"/>
+                    <circle cx="18.5004" cy="18.0004" r="3" stroke="#2EE572" stroke-width="1.2"/>
+                    <circle cx="18.4992" cy="17.9992" r="4.8" fill="#2EE572"/>
+                </svg>
+            </div>
+            <div style="width:1px;height:12px;background:#FFF;opacity:0.3"></div>
+            <span></span>
+            <div style="width:1px;height:12px;background:#FFF;opacity:0.3"></div>
+            <div style="cursor:pointer" id="dl-btn">
+                <svg width="37" height="36" viewBox="0 0 37 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="0.5" width="36" height="36" rx="12" fill="#4A90E2"/>
+                    <path d="M18.5 12v8M18.5 20l-3-3M18.5 20l3-3M12.5 22h12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <div style="cursor:pointer" id="net-btn">
+                <svg width="37" height="36" viewBox="0 0 37 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="0.5" width="36" height="36" rx="12" fill="#9B59B6"/>
+                    <path d="M12.5 14h12M12.5 18h12M12.5 22h8" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div style="cursor:pointer" id="stop-btn">
+                <svg width="37" height="36" viewBox="0 0 37 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="0.5" width="36" height="36" rx="12" fill="#FF6A4D"/>
+                    <path d="M10.166 17.9993C10.166 14.071 10.166 12.1068 11.386 10.886C12.6077 9.66602 14.571 9.66602 18.4993 9.66602C22.4277 9.66602 24.3918 9.66602 25.6118 10.886C26.8327 12.1077 26.8327 14.071 26.8327 17.9993C26.8327 21.9277 26.8327 23.8918 25.6118 25.1118C24.3927 26.3327 22.4277 26.3327 18.4993 26.3327C14.571 26.3327 12.6068 26.3327 11.386 25.1118C10.166 23.8927 10.166 21.9277 10.166 17.9993Z" fill="white"/>
+                </svg>
+            </div>
+            <div style="cursor:pointer" id="clear-btn">
+                <svg width="37" height="36" viewBox="0 0 37 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="0.5" width="36" height="36" rx="12" fill="#7F8C8D"/>
+                    <path d="M14.5 14.5l8 8M22.5 14.5l-8 8" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </div>
+        `;
+        
+        // Replace the middle span with our timer
+        hud.children[2].replaceWith(timeDisplay);
+        
+        document.body.appendChild(hud);
+
+        // Event handlers
+        hud.querySelector("#dl-btn").onclick = () => window.__rr.download();
+        hud.querySelector("#net-btn").onclick = () => {
+            console.table(window.__rr.getNetworkEvents());
+        };
+        hud.querySelector("#stop-btn").onclick = () => {
+            clearInterval(timerInterval);
+            window.__rr.stop();
+            window.opener?.postMessage(
+                {
+                    type: "rrweb_events",
+                    data: JSON.stringify(session),
+                },
+                "*",
+            );
+            hud.remove();
+        };
+        hud.querySelector("#clear-btn").onclick = () => {
+            clearInterval(timerInterval);
+            sessionStorage.removeItem("rrweb_testmode");
+            hud.remove();
+            console.log("🧪 Test mode disabled");
+        };
     }
+
+    // Initialize test mode UI when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', createTestModeUI);
+    } else {
+        createTestModeUI();
+    }
+}
 })();
