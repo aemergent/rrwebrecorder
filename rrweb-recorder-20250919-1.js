@@ -111,6 +111,12 @@
         }
     });
 
+   window.addEventListener('beforeunload', () => {
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage({ type: 'window_closing' }, '*');
+    }
+  });
+
     console.log('🎯 Console capture enabled for rrweb');
 
     // Helper function to safely serialize data
