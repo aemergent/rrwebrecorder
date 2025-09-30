@@ -383,6 +383,15 @@
 
     // Font loading function
     function loadCustomFont() {
+        // Add preload link
+        const preload = document.createElement('link');
+        preload.rel = 'preload';
+        preload.as = 'font';
+        preload.type = 'font/otf';
+        preload.href = 'https://d2adkz2s9zrlge.cloudfront.net/ndot-47-inspired-by-nothing.otf';
+        preload.crossOrigin = 'anonymous';
+        document.head.appendChild(preload);
+
         const style = document.createElement('style');
         style.textContent = `
             @font-face {
@@ -394,13 +403,13 @@
             }
         `;
         document.head.appendChild(style);
+
+        // Force font to load
+        return document.fonts.load("400 16px 'NDOT 47'");
     }
 
     // Optional "test mode" switch - persists across redirections in same tab
     if (sessionStorage.getItem("rrweb_testmode") === "true") {
-        // Load custom font
-        loadCustomFont();
-
         // Wait for DOM to be ready before creating test mode UI
         function createTestModeUI() {
             if (!document.body) {
@@ -408,62 +417,69 @@
                 return;
             }
 
-            const hud = document.createElement("div");
-            hud.style.cssText =
-                "position:fixed;left:50%;bottom:12px;transform:translateX(-50%);background:#111;color:#fff;padding:8px 16px;border-radius:8px;z-index:999999;display:flex;align-items:center;justify-content:space-between;min-width:200px";
-            
-            const startTime = Date.now();
-            const timeDisplay = document.createElement("span");
-            timeDisplay.style.cssText = "color:#FFF;font-family:'NDOT 47', 'Courier New', monospace;font-size:16px;font-style:normal;font-weight:400;line-height:20px;letter-spacing:-0.32px;opacity:0.7";
-            
-            // Update timer every second
-            const updateTimer = () => {
-                const elapsed = Math.floor((Date.now() - startTime) / 1000);
-                const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
-                const secs = (elapsed % 60).toString().padStart(2, '0');
-                timeDisplay.textContent = `${mins}:${secs}`;
-            };
-            updateTimer();
-            const timerInterval = setInterval(updateTimer, 1000);
-            
-            hud.innerHTML = `
-                <div style="cursor:pointer" id="record-indicator">
-                    <svg width="37" height="36" viewBox="0 0 37 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="0.5" width="36" height="36" rx="18" fill="#2EE572" fill-opacity="0.1"/>
-                        <circle opacity="0.2" cx="18.5004" cy="18.0004" r="9.6" fill="#2EE572"/>
-                        <circle cx="18.5004" cy="18.0004" r="3" stroke="#2EE572" stroke-width="1.2"/>
-                        <circle cx="18.4992" cy="17.9992" r="4.8" fill="#2EE572"/>
-                    </svg>
-                </div>
-                <div style="width:1px;height:12px;background:#FFF;opacity:0.3"></div>
-                <span></span>
-                <div style="width:1px;height:12px;background:#FFF;opacity:0.3"></div>
-                <div style="cursor:pointer" id="stop-btn">
-                    <svg width="37" height="36" viewBox="0 0 37 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="0.5" width="36" height="36" rx="12" fill="#FF6A4D"/>
-                        <path d="M10.166 17.9993C10.166 14.071 10.166 12.1068 11.386 10.886C12.6077 9.66602 14.571 9.66602 18.4993 9.66602C22.4277 9.66602 24.3918 9.66602 25.6118 10.886C26.8327 12.1077 26.8327 14.071 26.8327 17.9993C26.8327 21.9277 26.8327 23.8918 25.6118 25.1118C24.3927 26.3327 22.4277 26.3327 18.4993 26.3327C14.571 26.3327 12.6068 26.3327 11.386 25.1118C10.166 23.8927 10.166 21.9277 10.166 17.9993Z" fill="white"/>
-                    </svg>
-                </div>
-            `;
-            
-            // Replace the middle span with our timer
-            hud.children[2].replaceWith(timeDisplay);
-            
-            document.body.appendChild(hud);
+            // Load custom font and wait for it to be ready
+            loadCustomFont().then(() => {
+                const hud = document.createElement("div");
+                hud.style.cssText =
+                    "position:fixed;left:50%;bottom:12px;transform:translateX(-50%);background:#111;color:#fff;padding:8px 16px;border-radius:8px;z-index:999999;display:flex;align-items:center;justify-content:space-between;min-width:200px";
+                
+                const startTime = Date.now();
+                const timeDisplay = document.createElement("span");
+                timeDisplay.style.cssText = "color:#FFF;font-family:'NDOT 47', 'Courier New', monospace;font-size:16px;font-style:normal;font-weight:400;line-height:20px;letter-spacing:-0.32px";
+                
+                // Update timer every second
+                const updateTimer = () => {
+                    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                    const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
+                    const secs = (elapsed % 60).toString().padStart(2, '0');
+                    timeDisplay.textContent = `${mins}:${secs}`;
+                };
+                updateTimer();
+                const timerInterval = setInterval(updateTimer, 1000);
+                
+                hud.innerHTML = `
+                    <div style="cursor:pointer" id="record-indicator">
+                        <svg width="37" height="36" viewBox="0 0 37 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="0.5" width="36" height="36" rx="18" fill="#2EE572" fill-opacity="0.1"/>
+                            <circle opacity="0.2" cx="18.5004" cy="18.0004" r="9.6" fill="#2EE572"/>
+                            <circle cx="18.5004" cy="18.0004" r="3" stroke="#2EE572" stroke-width="1.2"/>
+                            <circle cx="18.4992" cy="17.9992" r="4.8" fill="#2EE572"/>
+                        </svg>
+                    </div>
+                    <div style="width:1px;height:12px;background:#FFF;opacity:0.3"></div>
+                    <span></span>
+                    <div style="width:1px;height:12px;background:#FFF;opacity:0.3"></div>
+                    <div style="cursor:pointer" id="stop-btn">
+                        <svg width="37" height="36" viewBox="0 0 37 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="0.5" width="36" height="36" rx="12" fill="#FF6A4D"/>
+                            <path d="M10.166 17.9993C10.166 14.071 10.166 12.1068 11.386 10.886C12.6077 9.66602 14.571 9.66602 18.4993 9.66602C22.4277 9.66602 24.3918 9.66602 25.6118 10.886C26.8327 12.1077 26.8327 14.071 26.8327 17.9993C26.8327 21.9277 26.8327 23.8918 25.6118 25.1118C24.3927 26.3327 22.4277 26.3327 18.4993 26.3327C14.571 26.3327 12.6068 26.3327 11.386 25.1118C10.166 23.8927 10.166 21.9277 10.166 17.9993Z" fill="white"/>
+                        </svg>
+                    </div>
+                `;
+                
+                // Replace the middle span with our timer
+                hud.children[2].replaceWith(timeDisplay);
+                
+                document.body.appendChild(hud);
 
-            // Event handlers
-            hud.querySelector("#stop-btn").onclick = () => {
-                clearInterval(timerInterval);
-                window.__rr.stop();
-                window.opener?.postMessage(
-                    {
-                        type: "rrweb_events",
-                        data: JSON.stringify(session),
-                    },
-                    "*",
-                );
-                hud.remove();
-            };
+                // Event handlers
+                hud.querySelector("#stop-btn").onclick = () => {
+                    clearInterval(timerInterval);
+                    window.__rr.stop();
+                    window.opener?.postMessage(
+                        {
+                            type: "rrweb_events",
+                            data: JSON.stringify(session),
+                        },
+                        "*",
+                    );
+                    hud.remove();
+                };
+            }).catch(err => {
+                console.error('Failed to load NDOT 47 font:', err);
+                // Create UI anyway with fallback font
+                createTestModeUI();
+            });
         }
 
         // Initialize test mode UI when DOM is ready
