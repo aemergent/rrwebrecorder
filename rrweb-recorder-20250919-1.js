@@ -44,7 +44,7 @@
     ['log', 'error', 'warn', 'info', 'debug'].forEach(level => {
         console[level] = function(...args) {
             // Call original console method first
-            originalConsole[level].apply(console, args);
+            // originalConsole[level].apply(console, args);
 
             // Capture for rrweb
             try {
@@ -383,15 +383,6 @@
 
     // Font loading function
     function loadCustomFont() {
-        // Add preload link
-        const preload = document.createElement('link');
-        preload.rel = 'preload';
-        preload.as = 'font';
-        preload.type = 'font/otf';
-        preload.href = 'https://d2adkz2s9zrlge.cloudfront.net/ndot-47-inspired-by-nothing.otf';
-        preload.crossOrigin = 'anonymous';
-        document.head.appendChild(preload);
-
         const style = document.createElement('style');
         style.textContent = `
             @font-face {
@@ -403,13 +394,13 @@
             }
         `;
         document.head.appendChild(style);
-
-        // Force font to load
-        return document.fonts.load("400 16px 'NDOT 47'");
     }
 
     // Optional "test mode" switch - persists across redirections in same tab
     if (sessionStorage.getItem("rrweb_testmode") === "true") {
+        // Load custom font
+        loadCustomFont();
+
         // Wait for DOM to be ready before creating test mode UI
         function createTestModeUI() {
             if (!document.body) {
@@ -417,24 +408,13 @@
                 return;
             }
 
-            // Load custom font and wait for it to be ready
-            loadCustomFont().then(() => {
-                buildUI();
-            }).catch(err => {
-                console.error('Failed to load NDOT 47 font:', err);
-                // Create UI anyway with fallback font
-                buildUI();
-            });
-        }
-
-        function buildUI() {
             const hud = document.createElement("div");
             hud.style.cssText =
                 "position:fixed;left:50%;bottom:12px;transform:translateX(-50%);background:#111;color:#fff;padding:8px 16px;border-radius:8px;z-index:999999;display:flex;align-items:center;justify-content:space-between;min-width:200px";
             
             const startTime = Date.now();
             const timeDisplay = document.createElement("span");
-            timeDisplay.style.cssText = "color:#FFF;font-family:'NDOT 47', 'Courier New', monospace;font-size:16px;font-style:normal;font-weight:400;line-height:20px;letter-spacing:-0.32px";
+            timeDisplay.style.cssText = "color:#FFF;font-family:'NDOT 47', 'Courier New', monospace;font-size:16px;font-style:normal;font-weight:400;line-height:20px;letter-spacing:-0.32px;opacity:0.7";
             
             // Update timer every second
             const updateTimer = () => {
