@@ -1,8 +1,6 @@
-// rrweb-recorder.js - Enhanced session recording with console, network, and navigation capture
 (function() {
     'use strict';
 
-    // Ensure rrweb is loaded
     if (typeof window.rrweb === 'undefined') {
         console.error('rrweb is not loaded. Please include rrweb script before this recorder.');
         return;
@@ -11,19 +9,14 @@
     const session = [];
     let stopRecording = null;
 
-    // Custom event emitter function
     function addCustomEvent(tag, payload) {
         session.push({
-            type: 5, // Custom event type
-            data: {
-                tag: tag,
-                payload: payload
-            },
+            type: 5,
+            data: { tag, payload },
             timestamp: Date.now()
         });
     }
 
-    // Start recording and get the stopFn
     stopRecording = window.rrweb.record({
         emit(e) {
             session.push(e);
@@ -31,54 +24,7 @@
         recordCanvas: true,
     });
 
-    // --- Console capture ---
-    const originalConsole = {
-        log: console.log,
-        error: console.error,
-        warn: console.warn,
-        info: console.info,
-        debug: console.debug
-    };
-
-    // Intercept all console methods
-    ['log', 'error', 'warn', 'info', 'debug'].forEach(level => {
-        console[level] = function(...args) {
-            // Call original console method first
-            // originalConsole[level].apply(console, args);
-
-            // Capture for rrweb
-            try {
-                const message = args.map(arg => {
-                    if (typeof arg === 'string') return arg;
-                    if (arg instanceof Error) return `${arg.name}: ${arg.message}\n${arg.stack}`;
-                    try {
-                        return JSON.stringify(arg, null, 2);
-                    } catch {
-                        return String(arg);
-                    }
-                }).join(' ');
-
-                addCustomEvent("console", {
-                    level: level,
-                    message: message,
-                    args: args.map(arg => {
-                        try {
-                            return typeof arg === 'string' ? arg : JSON.stringify(arg);
-                        } catch {
-                            return String(arg);
-                        }
-                    }),
-                    timestamp: Date.now(),
-                    url: location.href
-                });
-            } catch (e) {
-                // Don't break if rrweb fails
-                originalConsole.error('Failed to capture console log:', e);
-            }
-        };
-    });
-
-    // Capture uncaught errors
+    // --- Capture ONLY uncaught errors (no console wrapping) ---
     window.addEventListener('error', (event) => {
         try {
             addCustomEvent("console", {
@@ -92,11 +38,10 @@
                 column: event.colno
             });
         } catch (e) {
-            originalConsole.error('Failed to capture error event:', e);
+            console.error('Failed to capture error event:', e);
         }
     });
 
-    // Capture unhandled promise rejections
     window.addEventListener('unhandledrejection', (event) => {
         try {
             addCustomEvent("console", {
@@ -107,22 +52,31 @@
                 url: location.href
             });
         } catch (e) {
-            originalConsole.error('Failed to capture promise rejection:', e);
+            console.error('Failed to capture promise rejection:', e);
         }
     });
 
-    window.addEventListener('beforeunload', () => {
-        if (window.opener && !window.opener.closed) {
-            window.opener.postMessage({ type: 'window_closing' }, '*');
+    // Use pagehide instead of beforeunload to only trigger on actual tab closure
+    window.addEventListener('pagehide', (event) => {
+        // event.persisted = true means bfcache (back/forward navigation)
+        // event.persisted = false means actual unload/close
+        if (!event.persisted) {
+            if (window.opener && !window.opener.closed) {
+                try {
+                    window.opener.postMessage({ 
+                        type: 'window_closing',
+                        url: location.href,
+                        timestamp: Date.now()
+                    }, '*');
+                } catch (e) {
+                    console.error('Failed to send window_closing message:', e);
+                }
+            }
         }
     });
 
-    console.log('🎯 Console capture enabled for rrweb');
-
-    // Helper function to safely serialize data
     function serializeData(data, maxSize = 4096) {
         if (!data) return "";
-
         try {
             if (typeof data === "string") {
                 return data.slice(0, maxSize);
@@ -130,15 +84,11 @@
             if (data instanceof FormData) {
                 const entries = {};
                 for (const [key, value] of data.entries()) {
-                    entries[key] =
-                        typeof value === "string" ? value : "[File]";
+                    entries[key] = typeof value === "string" ? value : "[File]";
                 }
                 return JSON.stringify(entries).slice(0, maxSize);
             }
-            if (
-                data instanceof ArrayBuffer ||
-                data instanceof Uint8Array
-            ) {
+            if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
                 return `[Binary data: ${data.byteLength} bytes]`;
             }
             return JSON.stringify(data).slice(0, maxSize);
@@ -147,14 +97,12 @@
         }
     }
 
-    // --- Enhanced Network capture ---
-    // fetch
+    // --- Network capture (fetch and XHR still wrapped - no alternative) ---
     const origFetch = window.fetch;
     window.fetch = async function (resource, init = {}) {
         const started = Date.now();
         const id = Math.random().toString(36).slice(2);
 
-        // Extract request data
         let requestBody = "";
         if (init.body) {
             requestBody = serializeData(init.body);
@@ -178,8 +126,7 @@
             let responseType = "text";
 
             try {
-                const contentType =
-                    res.headers.get("content-type") || "";
+                const contentType = res.headers.get("content-type") || "";
                 if (contentType.includes("application/json")) {
                     responseText = await clone.text();
                     responseType = "json";
@@ -226,14 +173,11 @@
         }
     };
 
-    // Enhanced XMLHttpRequest
     const X = window.XMLHttpRequest;
     window.XMLHttpRequest = function WrappedXHR() {
         const xhr = new X();
         const id = Math.random().toString(36).slice(2);
-        let url = "",
-            method = "GET",
-            started = 0;
+        let url = "", method = "GET", started = 0;
         let requestHeaders = {};
         let requestBody = "";
 
@@ -266,7 +210,6 @@
                 timestamp: started,
             });
 
-            // Add event listeners BEFORE calling send
             const handleResponse = () => {
                 let responseBody = "";
                 let responseType = "text";
@@ -274,9 +217,7 @@
                 try {
                     if (
                         xhr.responseType === "json" ||
-                        xhr
-                            .getResponseHeader("content-type")
-                            ?.includes("application/json")
+                        xhr.getResponseHeader("content-type")?.includes("application/json")
                     ) {
                         responseBody = xhr.responseText || xhr.response;
                         responseType = "json";
@@ -287,9 +228,7 @@
                         responseBody = `[Binary response: ${xhr.response?.size || xhr.response?.byteLength || "unknown"} bytes]`;
                         responseType = "binary";
                     } else {
-                        responseBody =
-                            xhr.responseText ||
-                            String(xhr.response || "");
+                        responseBody = xhr.responseText || String(xhr.response || "");
                     }
                 } catch (e) {
                     responseBody = `[Error reading response: ${e.message}]`;
@@ -319,7 +258,6 @@
                 });
             };
 
-            // Use multiple event types to ensure we catch the response
             xhr.addEventListener("load", handleResponse);
             xhr.addEventListener("loadend", handleResponse);
             xhr.addEventListener("error", handleError);
@@ -331,14 +269,9 @@
         return xhr;
     };
 
-    // SPA navigations (history API)
-    const push = history.pushState,
-        replace = history.replaceState;
-    const emitNav = () =>
-        addCustomEvent("nav", {
-            href: location.href,
-            t: Date.now(),
-        });
+    // SPA navigations
+    const push = history.pushState, replace = history.replaceState;
+    const emitNav = () => addCustomEvent("nav", { href: location.href, t: Date.now() });
     history.pushState = function () {
         const r = push.apply(this, arguments);
         emitNav();
@@ -352,7 +285,6 @@
     window.addEventListener("popstate", emitNav);
     window.addEventListener("hashchange", emitNav);
 
-    // Expose controls
     window.__rr = {
         stop: () => stopRecording(),
         dump: () => session.slice(),
@@ -369,19 +301,17 @@
         getNetworkEvents: () => {
             return session.filter(
                 (event) =>
-                    event.type === 5 && // custom event
+                    event.type === 5 &&
                     event.data.tag === "network",
             );
         },
     };
 
-    // Check for test mode activation and store in sessionStorage for tab-level persistence
     const urlParams = new URLSearchParams(location.search);
     if (urlParams.get("testmode") === "1" || urlParams.get("debug") === "1") {
         sessionStorage.setItem("rrweb_testmode", "true");
     }
 
-    // Font loading function
     function loadCustomFont() {
         const style = document.createElement('style');
         style.textContent = `
@@ -396,12 +326,9 @@
         document.head.appendChild(style);
     }
 
-    // Optional "test mode" switch - persists across redirections in same tab
     if (sessionStorage.getItem("rrweb_testmode") === "true") {
-        // Load custom font
         loadCustomFont();
 
-        // Wait for DOM to be ready before creating test mode UI
         function createTestModeUI() {
             if (!document.body) {
                 setTimeout(createTestModeUI, 100);
@@ -416,7 +343,6 @@
             const timeDisplay = document.createElement("span");
             timeDisplay.style.cssText = "color:#FFF;font-family:'NDOT 47', 'Courier New', monospace;font-size:16px;font-style:normal;font-weight:400;line-height:20px;letter-spacing:-0.32px;opacity:0.7";
             
-            // Update timer every second
             const updateTimer = () => {
                 const elapsed = Math.floor((Date.now() - startTime) / 1000);
                 const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
@@ -446,12 +372,9 @@
                 </div>
             `;
             
-            // Replace the middle span with our timer
             hud.children[2].replaceWith(timeDisplay);
-            
             document.body.appendChild(hud);
 
-            // Event handlers
             hud.querySelector("#stop-btn").onclick = () => {
                 clearInterval(timerInterval);
                 window.__rr.stop();
@@ -466,7 +389,6 @@
             };
         }
 
-        // Initialize test mode UI when DOM is ready
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', createTestModeUI);
         } else {
